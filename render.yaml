@@ -1,0 +1,69 @@
+# Render Blueprint for the KiranaKing backend.
+# Deploy: push this repo to GitHub, then on Render → New → Blueprint → pick the repo.
+# Secrets below are marked `sync: false` so you enter them in the Render dashboard
+# (they are NOT read from your committed files).
+services:
+  - type: web
+    name: kiranaking-api
+    runtime: node
+    rootDir: server
+    plan: free
+    region: singapore # closest Render region to India; change if you prefer
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render injects PORT automatically — do NOT set it here.
+
+      # ── Database (Neon Postgres) ──
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+
+      # ── Auth ──
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+
+      # ── Frontend origin (CORS) — set to your deployed client URL ──
+      - key: CLIENT_URL
+        sync: false
+
+      # ── Cloudinary ──
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # ── Email (Brevo SMTP) ──
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SENDER_EMAIL
+        sync: false
+      - key: SENDER_NAME
+        sync: false
+
+      # ── Stripe ──
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+      # ── Inngest ──
+      - key: INNGEST_EVENT_KEY
+        sync: false
+      - key: INNGEST_SIGNING_KEY
+        sync: false
