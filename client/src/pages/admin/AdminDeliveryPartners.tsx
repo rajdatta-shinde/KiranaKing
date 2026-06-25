@@ -1,32 +1,59 @@
-import { useEffect, useState } from "react";
-import { PlusIcon, XIcon, TruckIcon, PhoneIcon, MailIcon } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { PlusIcon, XIcon, TruckIcon, PhoneIcon, MailIcon, EyeIcon, EyeOffIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import type { DeliveryPartner } from "../../types";
 import Loading from "../../components/Loading";
-import { dummyDeliveryPartnerData } from "../../assets/assets";
+import {
+    getPartners,
+    createPartner,
+    updatePartner,
+} from "../../services/admin";
 
 export default function AdminDeliveryPartners() {
     const [partners, setPartners] = useState<DeliveryPartner[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", vehicleType: "bike" });
 
     const fetchPartners = async () => {
-        setPartners(dummyDeliveryPartnerData as any)
-        setTimeout(() => setLoading(false), 1000)
+        try {
+            setPartners(await getPartners());
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to load partners");
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
         fetchPartners();
     }, []);
 
-    const handleSubmit = async (e: React.SubmitEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-
+        setSaving(true);
+        try {
+            await createPartner(form);
+            toast.success("Delivery partner onboarded");
+            setForm({ name: "", email: "", password: "", phone: "", vehicleType: "bike" });
+            setShowForm(false);
+            await fetchPartners();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not create partner");
+        } finally {
+            setSaving(false);
+        }
     };
 
     const toggleActive = async (id: string, isActive: boolean) => {
-        console.log(id, isActive);
+        try {
+            await updatePartner(id, { isActive: !isActive });
+            await fetchPartners();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not update partner");
+        }
     };
 
     if (loading) return <Loading />;
@@ -99,7 +126,12 @@ export default function AdminDeliveryPartners() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-app-green mb-1.5">Password</label>
-                                        <input type="password" required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-4 py-2.5 text-sm rounded-xl border border-app-border focus:border-app-green outline-none" />
+                                        <div className="relative">
+                                            <input type={showPassword ? "text" : "password"} required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-4 py-2.5 pr-11 text-sm rounded-xl border border-app-border focus:border-app-green outline-none" />
+                                            <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Hide password" : "Show password"} className="absolute inset-y-0 right-0 flex items-center px-3 text-app-green/70 hover:text-app-green">
+                                                {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">

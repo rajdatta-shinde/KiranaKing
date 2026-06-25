@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PlusIcon, EditIcon, XIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import type { Product } from "../../types";
 import Loading from "../../components/Loading";
-import { dummyProducts } from "../../assets/assets";
+import { getProducts, updateProduct } from "../../services/products";
+import { productImage } from "../../utils/image";
 
 export default function AdminProducts() {
 
@@ -13,10 +15,14 @@ export default function AdminProducts() {
     const [loading, setLoading] = useState(true);
 
     const fetchProducts = async () => {
-        setProducts(dummyProducts);
-        setTimeout(() => {
+        try {
+            const list = await getProducts();
+            setProducts(list);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to load products");
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
     useEffect(() => {
@@ -25,7 +31,15 @@ export default function AdminProducts() {
 
     const handleMarkOutOfStock = async (id: string, name: string) => {
         if (!window.confirm(`Are you sure you want to mark "${name}" as out of stock?`)) return;
-        console.log(id);
+        try {
+            const form = new FormData();
+            form.append("stock", "0");
+            await updateProduct(id, form);
+            toast.success(`"${name}" marked out of stock`);
+            await fetchProducts();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not update product");
+        }
     };
 
     if (loading) return <Loading />
@@ -59,7 +73,7 @@ export default function AdminProducts() {
                                     <tr key={product._id} className="hover:bg-zinc-50/50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <img src={product.image} alt={product.name} className="size-12 rounded-lg object-cover" />
+                                                <img src={productImage(product.image, product.name)} alt={product.name} className="size-12 rounded-lg object-cover" />
                                                 <div>
                                                     <p className="font-semibold text-zinc-900">{product.name}</p>
                                                     <p className="text-xs text-zinc-500">{product.category || "Uncategorized"}</p>

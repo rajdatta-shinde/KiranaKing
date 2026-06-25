@@ -5,11 +5,13 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { placeOrder } from "../services/orders";
+import { createPaymentIntent } from "../services/payments";
 import { formatPrice } from "../utils/format";
 import type { Address } from "../types";
 import CheckoutAddress from "../components/Checkout/CheckoutAddress";
 import CheckoutPayment from "../components/Checkout/CheckoutPayment";
 import CheckoutReview from "../components/Checkout/CheckoutReview";
+import StripePayment from "../components/Checkout/StripePayment";
 
 type Step = "address" | "payment" | "review";
 const steps: { key: Step; label: string }[] = [
@@ -29,6 +31,10 @@ export default function Checkout() {
   const [address, setAddress] = useState(emptyAddress);
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [loading, setLoading] = useState(false);
+  // Set once a card order is placed and a PaymentIntent exists — switches the
+  // left column to the Stripe card form.
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
 
   if (items.length === 0) {
     return (
@@ -44,9 +50,7 @@ export default function Checkout() {
   const handlePlaceOrder = async () => {
     setLoading(true);
     try {
-      // Phase 4 plugs Stripe in here for card payments before creating the order.
-      await new Promise((r) => setTimeout(r, 800));
-      const order = placeOrder({
+      const order = await placeOrder({
         items,
         shippingAddress: address,
         paymentMethod: paymentMethod === "card" ? "card" : "cod",
@@ -55,14 +59,30 @@ export default function Checkout() {
         tax: totals.tax,
         total: totals.total,
       });
+
+      if (paymentMethod === "card") {
+        // Order exists but is unpaid — collect payment with the Stripe form.
+        const secret = await createPaymentIntent(order._id);
+        setPlacedOrderId(order._id);
+        setClientSecret(secret);
+        scrollTo(0, 0);
+        return;
+      }
+
       clearCart();
       toast.success("Order placed successfully!");
       navigate(`/orders/${order._id}`);
-    } catch {
-      toast.error("Could not place your order. Please try again.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not place your order. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    clearCart();
+    toast.success("Payment successful! Order placed.");
+    navigate(`/orders/${placedOrderId}`);
   };
 
   const activeIndex = steps.findIndex((s) => s.key === step);
@@ -96,20 +116,26 @@ export default function Checkout() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          {step === "address" && (
-            <CheckoutAddress user={user} address={address} setAddress={setAddress} setStep={setStep} />
-          )}
-          {step === "payment" && (
-            <CheckoutPayment setStep={setStep} paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
-          )}
-          {step === "review" && (
-            <CheckoutReview
-              address={address as unknown as Address}
-              items={items}
-              handlePlaceOrder={handlePlaceOrder}
-              loading={loading}
-              total={totals.total}
-            />
+          {clientSecret ? (
+            <StripePayment clientSecret={clientSecret} total={totals.total} onSuccess={handlePaymentSuccess} />
+          ) : (
+            <>
+              {step === "address" && (
+                <CheckoutAddress user={user} address={address} setAddress={setAddress} setStep={setStep} />
+              )}
+              {step === "payment" && (
+                <CheckoutPayment setStep={setStep} paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
+              )}
+              {step === "review" && (
+                <CheckoutReview
+                  address={address as unknown as Address}
+                  items={items}
+                  handlePlaceOrder={handlePlaceOrder}
+                  loading={loading}
+                  total={totals.total}
+                />
+              )}
+            </>
           )}
         </div>
 

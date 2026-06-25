@@ -3,12 +3,21 @@ import prisma from "../lib/prisma";
 import { asyncHandler } from "../middleware/error";
 import { appendStatus } from "../lib/orderStatus";
 
+/** Emails granted admin access — excluded from the customer count. */
+function adminEmails(): string[] {
+  return (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 /** GET /api/admin/dashboard — headline counts + recent orders. */
 export const getDashboard = asyncHandler(async (_req, res) => {
   const [totalOrders, totalUsers, totalProducts, outOfStock, recentOrders, revenue] =
     await Promise.all([
       prisma.order.count(),
-      prisma.user.count(),
+      // Count customers only — admin/staff accounts are not real users.
+      prisma.user.count({ where: { email: { notIn: adminEmails() } } }),
       prisma.product.count(),
       prisma.product.count({ where: { stock: { lte: 0 } } }),
       prisma.order.findMany({

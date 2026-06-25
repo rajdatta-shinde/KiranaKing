@@ -16,11 +16,14 @@ const categoryImages = import.meta.glob("./*.png", {
   import: "default",
 }) as Record<string, string>;
 
-const productImages = import.meta.glob("./productpage/productpage img/*.png", {
-  eager: true,
-  query: "?url",
-  import: "default",
-}) as Record<string, string>;
+const productImages = import.meta.glob(
+  "./productpage/productpage img/*.{png,jpg,jpeg,webp}",
+  {
+    eager: true,
+    query: "?url",
+    import: "default",
+  }
+) as Record<string, string>;
 
 const catImg = (name: string) => categoryImages[`./${name}.png`] ?? "";
 const pImg = (file: string) =>
@@ -111,6 +114,15 @@ const productSeeds: Seed[] = [
   ["7_sprite_1_5l.png", "Lemon-Lime Soda", "drinks", 1.79, 2.19, "1.5 L", 150, false, 4.4, 287, "Crisp, clear lemon-lime soda with a citrus kick."],
   ["20_fanta_1_5l.png", "Orange Fizz", "drinks", 1.79, 2.19, "1.5 L", 140, false, 4.3, 192, "Bright, bubbly orange soda the whole family loves."],
   ["15_7_up_1_5l.png", "Clear Citrus Soda", "drinks", 1.79, 2.19, "1.5 L", 130, false, 4.2, 151, "Light, refreshing citrus soda — caffeine free."],
+  ["28_pampers_diapers_xl_56.jpg", "Pampers Complete Skin Comfort Diaper Pants XL", "baby_care", 14.99, 18.99, "56 pants", 75, false, 4.7, 1342, "Anti-rash blanket with lotion, aloe & Vitamin E. Up to 100% leak-proof, all-night comfort for 12-17 kg babies."],
+  ["29_littles_baby_wipes_80x3.jpg", "Little's Soft Cleansing Baby Wipes (Pack of 3)", "baby_care", 6.49, 8.49, "3 x 80 wipes", 110, false, 4.6, 876, "Extra thick & moist wipes with aloe vera, Vitamin E & jojoba oil. Paraben-free, alcohol-free and pH balanced."],
+  ["30_tedibar_nappi_rash_cream_75g.jpg", "Tedibar B4 Nappi Diaper Rash Cream", "baby_care", 4.99, 5.99, "75 g", 90, false, 4.5, 421, "Soothing diaper rash cream with zinc oxide, calendula oil & allantoin. Prevents and heals nappy rash."],
+  ["31_gillette_mach3_turbo_10.jpg", "Gillette Mach3 Turbo Razor Blades", "personal_care", 19.99, 24.99, "10 cartridges", 65, false, 4.8, 2103, "Pack of 10 Mach3 Turbo refill cartridges for a smooth, close shave with reduced irritation."],
+  ["32_miduty_dermal_sunscreen_spf50.webp", "Miduty Dermal Sun Protect 50 Sunscreen", "personal_care", 16.99, 21.99, "50 ml", 80, false, 4.4, 318, "Tinted mineral sunscreen SPF 50 PA+++ with UVA, UVB, IR & blue-light protection. 20% zinc oxide, non-greasy finish."],
+  ["33_minimalist_b12_moisturizer_50g.jpg", "Minimalist B12 + Repair Complex Face Moisturizer", "personal_care", 11.99, 14.99, "50 g", 95, false, 4.6, 1547, "5.5% B12 repair complex with ceramides & betaine. Repairs the skin barrier and soothes all skin types."],
+  ["34_soultari_butter_chicken_2pack.jpg", "Soul Tari Smoky Butter Chicken (Pack of 2)", "frozen_foods", 9.99, 12.99, "2 x 300 g", 50, false, 4.5, 264, "Ready-to-eat smoky butter chicken from master chefs. Just heat and serve a rich, restaurant-style meal."],
+  ["35_prolicious_baked_mathri_50g.jpg", "Prolicious Baked Mathri Methi", "frozen_foods", 2.49, 2.99, "50 g", 130, false, 4.3, 188, "Baked, not fried, methi mathri with 10g protein & 5g fibre per pack — a guilt-free crunchy snack."],
+  ["36_proskii_protein_cereal_2pack.jpg", "Proskii High Protein Cereal Mocha Madness (Pack of 2)", "frozen_foods", 13.99, 17.49, "2 x 250 g", 60, false, 4.4, 142, "High-protein breakfast cereal with 38g protein per 100g, 0g added sugar and 100% plant protein."],
 ];
 
 export const dummyProducts: Product[] = productSeeds.map((s, i) => {

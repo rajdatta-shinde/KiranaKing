@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ZapIcon } from "lucide-react";
 import ProductCard from "../components/ProductCard";
-import { dummyDeals } from "../assets/assets";
+import { useProducts } from "../context/ProductsContext";
 
 /** Counts down to the end of the current day for the flash-sale urgency strip. */
 function useCountdown() {
@@ -24,6 +24,15 @@ function useCountdown() {
 
 export default function FlashDeals() {
   const [h, m, s] = useCountdown();
+  const { products } = useProducts();
+  const dummyDeals = useMemo(
+    () =>
+      [...products]
+        .filter((p) => p.discount > 0)
+        .sort((a, b) => b.discount - a.discount)
+        .slice(0, 8),
+    [products]
+  );
 
   return (
     <div>

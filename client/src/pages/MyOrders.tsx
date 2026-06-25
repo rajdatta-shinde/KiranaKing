@@ -1,18 +1,31 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PackageIcon, ChevronRightIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import Loading from "../components/Loading";
 import { getOrders } from "../services/orders";
 import { statusColors } from "../assets/assets";
 import { formatPrice, formatDateTime, orderRef } from "../utils/format";
+import { productImage } from "../utils/image";
 import type { Order } from "../types";
 
 export default function MyOrders() {
   const [orders, setOrders] = useState<Order[] | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setOrders(getOrders()), 500);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    getOrders()
+      .then((list) => {
+        if (!cancelled) setOrders(list);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        toast.error(err instanceof Error ? err.message : "Failed to load orders");
+        setOrders([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!orders) return <Loading />;
@@ -40,7 +53,7 @@ export default function MyOrders() {
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-app-text font-mono">{orderRef(order._id)}</span>
+                    <span className="font-semibold text-app-text font-mono">{orderRef(order)}</span>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusColors[order.status] || "bg-zinc-100 text-zinc-600"}`}>
                       {order.status}
                     </span>
@@ -52,7 +65,7 @@ export default function MyOrders() {
                     {order.items.slice(0, 4).map((item, i) => (
                       <img
                         key={i}
-                        src={item.image}
+                        src={productImage(item.image, item.name)}
                         alt={item.name}
                         className="size-9 rounded-full border-2 border-white object-contain bg-app-cream"
                       />

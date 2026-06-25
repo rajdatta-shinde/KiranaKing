@@ -92,6 +92,7 @@ export interface DeliveryPartner {
 
 export interface Order {
     _id: string;
+    orderNumber?: string | null;
     user: string | { _id: string; name: string; email: string; phone?: string };
     items: OrderItem[];
     shippingAddress: Omit<Address, "_id" | "isDefault">;

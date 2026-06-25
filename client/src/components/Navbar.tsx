@@ -7,7 +7,6 @@ import {
   MapPinIcon,
   LogOutIcon,
   ShieldIcon,
-  TruckIcon,
   MenuIcon,
   XIcon,
   ZapIcon,
@@ -49,12 +48,12 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-app-border">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="h-16 flex items-center gap-4">
+      <nav className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="h-24 flex items-center gap-4">
           <Logo />
 
           {/* Desktop nav links */}
-          <div className="hidden lg:flex items-center gap-1 ml-2">
+          <div className="hidden lg:flex items-center gap-8 ml-2">
             {navLinks.map((link) => (
               <NavLink
                 key={link.to}
@@ -73,7 +72,7 @@ export default function Navbar() {
           </div>
 
           {/* Search (desktop) */}
-          <div className="hidden md:block flex-1 max-w-md mx-auto">
+          <div className="hidden md:block flex-1 max-w-2xl mx-auto">
             <SearchBar />
           </div>
 
@@ -124,9 +123,6 @@ export default function Navbar() {
                         <ShieldIcon className="size-4" /> Admin Panel
                       </Link>
                     )}
-                    <Link to="/delivery/dashboard" className="dropdown-link" onClick={() => setProfileOpen(false)}>
-                      <TruckIcon className="size-4" /> Delivery Portal
-                    </Link>
                     <button onClick={handleLogout} className="dropdown-link w-full text-app-error hover:text-app-error">
                       <LogOutIcon className="size-4" /> Sign Out
                     </button>

@@ -1,22 +1,17 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { LogOutIcon, TruckIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import type { DeliveryPartner } from "../../types";
-import { dummyDeliveryPartnerData } from "../../assets/assets";
+import { useAuth } from "../../context/AuthContext";
 
 export default function DeliveryLayout() {
     const navigate = useNavigate();
-    const [partner, setPartner] = useState<DeliveryPartner | null>(null);
+    const { user, logout } = useAuth();
 
-    useEffect(() => {
-        setPartner(dummyDeliveryPartnerData[0] as DeliveryPartner);
-    }, [navigate]);
-
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        await logout();
         navigate("/delivery/login");
     };
 
-    if (!partner) return null;
+    if (!user) return null;
 
     return (
         <div className="min-h-screen bg-app-cream">
@@ -25,10 +20,10 @@ export default function DeliveryLayout() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <TruckIcon className="size-6 text-app-green" />
-                        <span className="text-lg font-semibold text-app-green">Instacart Delivery</span>
+                        <span className="text-lg font-semibold text-app-green">KiranaKing Delivery</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-zinc-600">{partner.name}</span>
+                        <span className="text-sm font-medium text-zinc-600">{user.name}</span>
                         <button onClick={handleLogout} className="p-2 text-zinc-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                             <LogOutIcon className="size-4" />
                         </button>

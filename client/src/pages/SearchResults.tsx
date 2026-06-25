@@ -2,24 +2,26 @@ import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { SearchIcon } from "lucide-react";
 import ProductCard from "../components/ProductCard";
-import { categoriesData, dummyProducts } from "../assets/assets";
+import { categoriesData } from "../assets/assets";
+import { useProducts } from "../context/ProductsContext";
 
 export default function SearchResults() {
+  const { products } = useProducts();
   const [params] = useSearchParams();
   const query = (params.get("q") || "").trim();
 
   const results = useMemo(() => {
     if (!query) return [];
     const q = query.toLowerCase();
-    return dummyProducts.filter((p) => {
+    return products.filter((p) => {
       const categoryName = categoriesData.find((c) => c.slug === p.category)?.name ?? "";
       return (
         p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
+        (p.description ?? "").toLowerCase().includes(q) ||
         categoryName.toLowerCase().includes(q)
       );
     });
-  }, [query]);
+  }, [query, products]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

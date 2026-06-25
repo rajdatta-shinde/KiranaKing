@@ -2,7 +2,9 @@ import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SlidersHorizontalIcon } from "lucide-react";
 import ProductCard from "../components/ProductCard";
-import { categoriesData, dummyProducts } from "../assets/assets";
+import Loading from "../components/Loading";
+import { categoriesData } from "../assets/assets";
+import { useProducts } from "../context/ProductsContext";
 import type { Product } from "../types";
 
 type SortOption = "newest" | "price_low" | "price_high";
@@ -16,6 +18,7 @@ const sortOptions: { value: SortOption; label: string }[] = [
 const PRICE_MAX = 20;
 
 export default function Products() {
+  const { products: allProducts, loading } = useProducts();
   const [params, setParams] = useSearchParams();
   const activeCategory = params.get("category") || "";
 
@@ -34,7 +37,7 @@ export default function Products() {
   };
 
   const products = useMemo<Product[]>(() => {
-    let list = dummyProducts.filter((p) => p.price <= maxPrice);
+    let list = allProducts.filter((p) => p.price <= maxPrice);
     if (activeCategory) list = list.filter((p) => p.category === activeCategory);
     switch (sort) {
       case "price_low":
@@ -47,9 +50,11 @@ export default function Products() {
         list = [...list].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
     }
     return list;
-  }, [activeCategory, sort, maxPrice]);
+  }, [allProducts, activeCategory, sort, maxPrice]);
 
   const categoryName = categoriesData.find((c) => c.slug === activeCategory)?.name;
+
+  if (loading) return <Loading />;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

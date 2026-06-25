@@ -20,5 +20,10 @@ export const formatDateTime = (input: string | Date): string =>
     minute: "2-digit",
   });
 
-/** Short order reference derived from an id, e.g. `#1A2B3C`. */
-export const orderRef = (id: string): string => `#${id.slice(-6).toUpperCase()}`;
+/**
+ * Human-facing order number, e.g. `402-260625-000042`. Prefers the stored
+ * `orderNumber`; falls back to a short id ref for legacy orders created before
+ * order numbers existed.
+ */
+export const orderRef = (order: { orderNumber?: string | null; _id: string }): string =>
+  order.orderNumber || `#${order._id.slice(-6).toUpperCase()}`;

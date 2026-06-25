@@ -6,9 +6,10 @@ import Loading from "../components/Loading";
 import OrderTimeLine from "../components/OrderTracking/OrderTimeLine";
 import OrderOTP from "../components/OrderTracking/OrderOTP";
 import LiveMap from "../components/OrderTracking/LiveMap";
-import { cancelOrder, getOrderById } from "../services/orders";
+import { cancelOrder, getLiveLocation, getOrderById } from "../services/orders";
 import { statusColors } from "../assets/assets";
 import { formatPrice, orderRef } from "../utils/format";
+import { productImage } from "../utils/image";
 import type { Order } from "../types";
 
 const CANCELLABLE = ["Placed", "Confirmed"];
@@ -21,25 +22,35 @@ export default function OrderTracking() {
   const [liveLocation, setLiveLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setOrder(id ? getOrderById(id) ?? null : null), 400);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    setOrder(undefined);
+    if (!id) {
+      setOrder(null);
+      return;
+    }
+    getOrderById(id).then((o) => {
+      if (!cancelled) setOrder(o);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
-  // Simulate the delivery partner moving toward the destination.
+  // Poll the partner's live GPS location while the order is en route.
   useEffect(() => {
-    if (!order || !LIVE_STATUSES.includes(order.status)) return;
-    const dest = order.shippingAddress;
-    if (!dest?.lat) return;
-    let lat = dest.lat + 0.02;
-    let lng = dest.lng + 0.02;
-    setLiveLocation({ lat, lng });
-    const interval = setInterval(() => {
-      lat += (dest.lat - lat) * 0.15;
-      lng += (dest.lng - lng) * 0.15;
-      setLiveLocation({ lat, lng });
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [order]);
+    if (!order || !id || !LIVE_STATUSES.includes(order.status)) return;
+    let cancelled = false;
+    const poll = async () => {
+      const loc = await getLiveLocation(id).catch(() => null);
+      if (!cancelled && loc) setLiveLocation(loc);
+    };
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [order, id]);
 
   if (order === undefined) return <Loading label="Loading order..." />;
 
@@ -54,11 +65,15 @@ export default function OrderTracking() {
     );
   }
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (!window.confirm("Cancel this order?")) return;
-    cancelOrder(order._id);
-    setOrder(getOrderById(order._id) ?? null);
-    toast.success("Order cancelled");
+    try {
+      const updated = await cancelOrder(order._id);
+      setOrder(updated);
+      toast.success("Order cancelled");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not cancel order");
+    }
   };
 
   const partner = order.deliveryPartner;
@@ -71,7 +86,7 @@ export default function OrderTracking() {
 
       <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-app-green font-mono">{orderRef(order._id)}</h1>
+          <h1 className="text-2xl font-semibold text-app-green font-mono">{orderRef(order)}</h1>
           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[order.status] || "bg-zinc-100 text-zinc-600"}`}>
             {order.status}
           </span>
@@ -127,7 +142,7 @@ export default function OrderTracking() {
             <div className="space-y-3">
               {order.items.map((item, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <img src={item.image} alt={item.name} className="size-10 rounded-lg object-contain bg-app-cream p-1" />
+                  <img src={productImage(item.image, item.name)} alt={item.name} className="size-10 rounded-lg object-contain bg-app-cream p-1" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-app-text line-clamp-1">{item.name}</p>
                     <p className="text-xs text-app-text-light">Qty {item.quantity} • {item.unit}</p>

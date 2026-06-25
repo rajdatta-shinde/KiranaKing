@@ -57,6 +57,12 @@ model Product {
 
 model Order {
   id              String @id @default(uuid())
+  // Monotonic counter assigned by the DB; the human-facing orderNumber is
+  // derived from it so numbers are sequential and never collide.
+  orderSeq        Int    @unique @default(autoincrement())
+  // Amazon-style display id, e.g. "402-260625-000042". Nullable only so rows
+  // created before this field existed don't break; new orders always set it.
+  orderNumber     String? @unique
   userId          String
   user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   items           Json

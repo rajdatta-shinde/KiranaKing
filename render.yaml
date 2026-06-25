@@ -9,7 +9,7 @@ services:
     rootDir: server
     plan: free
     region: singapore # closest Render region to India; change if you prefer
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /
     autoDeploy: true
@@ -28,7 +28,7 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: ADMIN_EMAILS
-        sync: false
+        value: admin123@gmail.com
 
       # ── Frontend origin (CORS) — set to your deployed client URL ──
       - key: CLIENT_URL

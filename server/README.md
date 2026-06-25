@@ -15,7 +15,7 @@ npm run db:seed             # admin + partners + sample products
 npm run dev                 # http://localhost:5000
 ```
 
-Seeded logins: admin `admin@kiranaking.app / admin123`, partners `*@kiranaking.app / partner123`.
+Seeded login: admin `admin123@gmail.com / admin123` (sign in via the "Login as Admin" screen). No delivery partners are seeded — add them from the admin panel.
 
 ## Background jobs (Inngest)
 

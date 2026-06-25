@@ -1,9 +1,10 @@
 import type { Product } from "../types";
-import { dummyProducts } from "../assets/assets";
+import { useProducts } from "../context/ProductsContext";
 import ProductCard from "./ProductCard";
 
 export default function RelatedProducts({ product }: { product: Product }) {
-  const related = dummyProducts
+  const { products } = useProducts();
+  const related = products
     .filter((p) => p.category === product.category && p._id !== product._id)
     .slice(0, 5);
 

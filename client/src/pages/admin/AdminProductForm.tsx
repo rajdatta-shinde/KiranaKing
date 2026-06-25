@@ -1,11 +1,14 @@
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useEffect, type FormEvent } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon } from "lucide-react";
-import { categoriesData, dummyProducts } from "../../assets/assets";
+import toast from "react-hot-toast";
+import { categoriesData } from "../../assets/assets";
 import Loading from "../../components/Loading";
+import { createProduct, getProduct, updateProduct } from "../../services/products";
 
 export default function AdminProductForm() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const isEdit = Boolean(id);
 
     const [loading, setLoading] = useState(isEdit);
@@ -25,18 +28,61 @@ export default function AdminProductForm() {
     });
 
     useEffect(() => {
+        let cancelled = false;
         const fetchData = async () => {
-            if (isEdit) {
-                setFormData(() => dummyProducts.find((p) => p._id === id) as any)
+            if (isEdit && id) {
+                try {
+                    const p = await getProduct(id);
+                    if (cancelled) return;
+                    setFormData({
+                        name: p.name ?? "",
+                        description: p.description ?? "",
+                        price: String(p.price ?? ""),
+                        originalPrice: String(p.originalPrice ?? ""),
+                        image: p.image ?? "",
+                        category: p.category ?? "",
+                        unit: p.unit ?? "",
+                        stock: String(p.stock ?? ""),
+                        isOrganic: !!p.isOrganic,
+                    });
+                } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Failed to load product");
+                }
             }
-            setLoading(false)
+            if (!cancelled) setLoading(false);
         };
         fetchData();
+        return () => {
+            cancelled = true;
+        };
     }, [id, isEdit]);
 
-    const handleSubmit = async (e: React.SubmitEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        setSaving(true);
+        try {
+            const form = new FormData();
+            form.append("name", formData.name);
+            form.append("description", formData.description);
+            form.append("price", formData.price);
+            if (formData.originalPrice) form.append("originalPrice", formData.originalPrice);
+            form.append("category", formData.category);
+            form.append("unit", formData.unit);
+            form.append("stock", formData.stock || "0");
+            form.append("isOrganic", String(formData.isOrganic));
+            if (imageFile) form.append("image", imageFile);
+            else if (formData.image) form.append("image", formData.image);
 
+            if (isEdit && id) await updateProduct(id, form);
+            else await createProduct(form);
+
+            toast.success(isEdit ? "Product updated" : "Product created");
+            navigate("/admin/products");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not save product");
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (

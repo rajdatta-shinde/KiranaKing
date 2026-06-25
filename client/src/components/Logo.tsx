@@ -16,7 +16,7 @@ export default function Logo({
       <img
         src="/kirana king logo.png"
         alt="KiranaKing"
-        className="h-10 w-auto object-contain"
+        className="h-28 w-auto object-contain translate-y-4"
       />
     </Link>
   );

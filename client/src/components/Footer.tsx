@@ -24,10 +24,10 @@ const columns = [
   {
     title: "Company",
     links: [
-      { label: "About Us", to: "/" },
-      { label: "Careers", to: "/" },
-      { label: "Privacy Policy", to: "/" },
-      { label: "Terms of Service", to: "/" },
+      { label: "About Us", to: "/about" },
+      { label: "Careers", to: "/careers" },
+      { label: "Privacy Policy", to: "/privacy" },
+      { label: "Terms of Service", to: "/terms" },
     ],
   },
 ];
@@ -42,8 +42,12 @@ export default function Footer() {
             Farm-fresh groceries and daily essentials, delivered to your door in minutes.
           </p>
           <div className="mt-5 space-y-2 text-sm">
-            <p className="flex items-center gap-2"><MailIcon className="size-4 text-app-orange" /> support@kiranaking.app</p>
-            <p className="flex items-center gap-2"><PhoneIcon className="size-4 text-app-orange" /> +1 (555) 010-2030</p>
+            <a href="mailto:support@kiranaking.app" className="flex items-center gap-2 hover:text-app-orange transition-colors w-fit">
+              <MailIcon className="size-4 text-app-orange" /> support@kiranaking.app
+            </a>
+            <a href="tel:+15550102030" className="flex items-center gap-2 hover:text-app-orange transition-colors w-fit">
+              <PhoneIcon className="size-4 text-app-orange" /> +1 (555) 010-2030
+            </a>
             <p className="flex items-center gap-2"><MapPinIcon className="size-4 text-app-orange" /> Springfield, IL</p>
           </div>
         </div>

@@ -3,7 +3,13 @@ import { TruckIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import type { DeliveryPartner } from "../../types";
 import Loading from "../../components/Loading";
-import { dummyDashboardOrdersData, dummyDeliveryPartnerData } from "../../assets/assets";
+import { orderRef } from "../../utils/format";
+import {
+    getAllOrders,
+    getPartners,
+    assignPartner,
+    updateOrderStatus,
+} from "../../services/admin";
 
 export default function AdminOrders() {
 
@@ -16,29 +22,46 @@ export default function AdminOrders() {
     const [selectedPartner, setSelectedPartner] = useState("");
 
     const fetchOrders = async () => {
-        setOrders(dummyDashboardOrdersData)
-        setTimeout(() => setLoading(false), 1000)
+        try {
+            setOrders(await getAllOrders());
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to load orders");
+        }
     };
 
     const fetchPartners = async () => {
-        setPartners(dummyDeliveryPartnerData as any)
-        setTimeout(() => setLoading(false), 1000)
+        try {
+            setPartners(await getPartners());
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to load partners");
+        }
     };
 
     useEffect(() => {
-        fetchOrders();
-        fetchPartners();
+        Promise.all([fetchOrders(), fetchPartners()]).finally(() => setLoading(false));
     }, []);
 
     const handleStatusChange = async (id: string, newStatus: string) => {
-        console.log(id, newStatus);
+        try {
+            await updateOrderStatus(id, newStatus);
+            await fetchOrders();
+            toast.success(`Order marked ${newStatus}`);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not update status");
+        }
     };
 
     const handleAssign = async () => {
         if (!assignModal || !selectedPartner) return;
-        toast.success("Delivery partner assigned!");
-        setAssignModal(null);
-        setSelectedPartner("");
+        try {
+            await assignPartner(assignModal, selectedPartner);
+            await fetchOrders();
+            toast.success("Delivery partner assigned!");
+            setAssignModal(null);
+            setSelectedPartner("");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not assign partner");
+        }
     };
 
     const statusOptions = ["Placed", "Confirmed", "Assigned", "Packed", "Out for Delivery", "Delivered", "Cancelled"];
@@ -80,7 +103,7 @@ export default function AdminOrders() {
                                 orders.map((order: any) => (
                                     <tr key={order._id} className="hover:bg-zinc-50/50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <p className="font-semibold text-zinc-900">#{order._id.slice(-6)}</p>
+                                            <p className="font-semibold text-zinc-900 font-mono">{orderRef(order)}</p>
                                             <p className="text-xs text-zinc-500">{new Date(order.createdAt).toLocaleString()}</p>
                                         </td>
                                         <td className="px-6 py-4">

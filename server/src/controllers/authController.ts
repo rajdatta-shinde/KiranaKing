@@ -53,6 +53,11 @@ export const loginUser = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Email and password are required" });
   }
 
+  // Admins must use the dedicated admin login endpoint.
+  if (isAdminEmail(email)) {
+    return res.status(403).json({ message: "Admins must sign in from the Login as Admin page." });
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ message: "Invalid credentials" });
@@ -62,6 +67,28 @@ export const loginUser = asyncHandler(async (req, res) => {
   setTokenCookie(res, token);
   const { password: _pw, ...safe } = user;
   res.json({ user: { ...safe, isAdmin: isAdminEmail(user.email) }, token });
+});
+
+/** POST /api/auth/admin/login — admins only. */
+export const adminLogin = asyncHandler(async (req, res) => {
+  const { email, password } = req.body as { email?: string; password?: string };
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  if (!isAdminEmail(email)) {
+    return res.status(403).json({ message: "This account is not an administrator." });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  const token = generateToken(user.id, "user");
+  setTokenCookie(res, token);
+  const { password: _pw, ...safe } = user;
+  res.json({ user: { ...safe, isAdmin: true }, token });
 });
 
 /** POST /api/auth/logout */

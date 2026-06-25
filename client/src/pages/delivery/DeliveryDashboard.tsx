@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
 import { PackageIcon, NavigationIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import OtpModal from "../../components/Delivery/OtpModal";
 import CancelModal from "../../components/Delivery/CancelModal";
 import DeliveryOrderCard from "../../components/Delivery/DeliveryOrderCard";
 import Loading from "../../components/Loading";
 import type { Order } from "../../types";
-import { dummyDashboardOrdersData } from "../../assets/assets";
+import {
+    getAssignedOrders,
+    updateOrderStatus,
+    verifyDeliveryOtp,
+    updateLiveLocation,
+} from "../../services/delivery";
+
+const COMPLETED_STATUSES = ["Delivered", "Cancelled"];
 
 export default function DeliveryDashboard() {
 
@@ -24,37 +32,85 @@ export default function DeliveryDashboard() {
     const [cancelReason, setCancelReason] = useState("");
 
     const fetchOrders = async () => {
-        setLoading(true);
-        setOrders(dummyDashboardOrdersData as any);
-        setLoading(false);
+        try {
+            setOrders(await getAssignedOrders());
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to load orders");
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
         fetchOrders();
-    }, [tab]);
+    }, []);
+
+    const visibleOrders = orders.filter((o) =>
+        tab === "completed" ? COMPLETED_STATUSES.includes(o.status) : !COMPLETED_STATUSES.includes(o.status)
+    );
+
+    // Push live GPS to any in-transit order while location sharing is on.
+    useEffect(() => {
+        if (!tracking) return;
+        if (!navigator.geolocation) {
+            toast.error("Geolocation is not supported on this device");
+            setTracking(false);
+            return;
+        }
+        const watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                orders
+                    .filter((o) => o.status === "Out for Delivery")
+                    .forEach((o) =>
+                        updateLiveLocation(o._id, pos.coords.latitude, pos.coords.longitude).catch(() => undefined)
+                    );
+            },
+            () => toast.error("Could not read your location"),
+            { enableHighAccuracy: true }
+        );
+        return () => navigator.geolocation.clearWatch(watchId);
+    }, [tracking, orders]);
 
     const handleUpdateStatus = async (orderId: string, status: string) => {
-        console.log(orderId, status);
+        try {
+            await updateOrderStatus(orderId, status);
+            await fetchOrders();
+            toast.success(`Order marked ${status}`);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not update status");
+        }
     };
 
     const handleComplete = async () => {
         if (!otpModal || !otp) return;
         setSubmitting(true);
-        setTimeout(() => {
-            setSubmitting(false);
+        try {
+            await verifyDeliveryOtp(otpModal, otp);
+            await fetchOrders();
+            toast.success("Delivery confirmed!");
             setOtpModal(null);
             setOtp("");
-        }, 1000);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Invalid OTP");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleCancel = async () => {
         if (!cancelModal) return;
         setSubmitting(true);
-        setTimeout(() => {
-            setSubmitting(false);
+        try {
+            await updateOrderStatus(cancelModal, "Cancelled", cancelReason || "Cancelled by partner");
+            await fetchOrders();
+            toast.success("Delivery cancelled");
             setCancelModal(null);
             setCancelReason("");
-        }, 1000);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not cancel delivery");
+        } finally {
+            setSubmitting(false);
+        }
     }
 
     return (
@@ -77,7 +133,7 @@ export default function DeliveryDashboard() {
             {/* Orders */}
             {loading ? (
                 <Loading />
-            ) : orders.length === 0 ? (
+            ) : visibleOrders.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-2xl border border-app-border">
                     <PackageIcon className="size-12 text-app-border mx-auto mb-3" />
                     <p className="text-lg font-semibold text-zinc-900 mb-1">No {tab} deliveries</p>
@@ -85,7 +141,7 @@ export default function DeliveryDashboard() {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {orders.map((order) => <DeliveryOrderCard key={order._id} order={order} tab={tab} handleUpdateStatus={handleUpdateStatus} setOtpModal={setOtpModal} setCancelModal={setCancelModal} />)}
+                    {visibleOrders.map((order) => <DeliveryOrderCard key={order._id} order={order} tab={tab} handleUpdateStatus={handleUpdateStatus} setOtpModal={setOtpModal} setCancelModal={setCancelModal} />)}
                 </div>
             )}
 

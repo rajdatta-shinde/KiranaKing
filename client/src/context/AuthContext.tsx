@@ -6,95 +6,95 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Address, User, UserRole } from "../types";
+import type { Address, User } from "../types";
+import * as authApi from "../services/auth";
+import { setToken } from "../services/api";
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
+  loginAdmin: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<User>;
-  logout: () => void;
+  loginPartner: (email: string, password: string) => Promise<User>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   updateAddresses: (addresses: Address[]) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "kk_auth_user";
-
-/**
- * Phase 1: mock authentication backed by localStorage. The role is inferred
- * from the email so every protected/role-based route can be exercised without
- * a backend (e.g. `admin@…`, `partner@…`). Phase 3 replaces the bodies of
- * login/register/logout with real API + httpOnly-cookie calls; the public
- * shape of this context stays the same.
- */
-function inferRole(email: string): UserRole {
-  const e = email.toLowerCase();
-  if (e.includes("admin")) return "admin";
-  if (e.includes("partner") || e.includes("delivery")) return "delivery";
-  return "customer";
-}
-
-function buildUser(name: string, email: string): User {
-  const role = inferRole(email);
-  return {
-    _id: `usr_${btoa(email).slice(0, 10)}`,
-    name,
-    email,
-    phone: "",
-    avatar: "",
-    role,
-    isAdmin: role === "admin",
-    addresses: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-}
+const ROLE_KEY = "kk_role";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Do NOT restore a previous session. The app should always land on the
+  // login page on a fresh open or refresh, so the user explicitly chooses
+  // where to go (customer / admin / delivery). Clear any persisted token so a
+  // stale session never auto-logs anyone in.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setUser(JSON.parse(raw));
-    } catch {
-      /* ignore corrupt storage */
-    }
+    setToken(null);
+    localStorage.removeItem(ROLE_KEY);
     setLoading(false);
   }, []);
 
-  const persist = (next: User | null) => {
+  const persist = (next: User) => {
     setUser(next);
-    if (next) localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    else localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(ROLE_KEY, next.role);
   };
 
-  const login = async (email: string, _password: string): Promise<User> => {
-    await new Promise((r) => setTimeout(r, 600));
-    const name = email.split("@")[0].replace(/\b\w/g, (c) => c.toUpperCase());
-    const next = buildUser(name, email);
+  const login = async (email: string, password: string) => {
+    const next = await authApi.login(email, password);
     persist(next);
     return next;
   };
 
-  const register = async (name: string, email: string, _password: string): Promise<User> => {
-    await new Promise((r) => setTimeout(r, 600));
-    const next = buildUser(name, email);
+  const loginAdmin = async (email: string, password: string) => {
+    const next = await authApi.loginAdmin(email, password);
     persist(next);
     return next;
   };
 
-  const logout = () => persist(null);
+  const register = async (name: string, email: string, password: string) => {
+    const next = await authApi.register(name, email, password);
+    persist(next);
+    return next;
+  };
+
+  const loginPartner = async (email: string, password: string) => {
+    const next = await authApi.loginPartner(email, password);
+    persist(next);
+    return next;
+  };
+
+  const logout = async () => {
+    const role = user?.role ?? "customer";
+    try {
+      await authApi.logout(role);
+    } finally {
+      setUser(null);
+      localStorage.removeItem(ROLE_KEY);
+    }
+  };
+
+  const refreshUser = async () => {
+    if (!user) return;
+    try {
+      const me = user.role === "delivery" ? await authApi.fetchPartnerMe() : await authApi.fetchMe();
+      setUser(me);
+    } catch {
+      /* keep the current user on a transient failure */
+    }
+  };
 
   const updateAddresses = (addresses: Address[]) => {
-    if (!user) return;
-    persist({ ...user, addresses });
+    setUser((prev) => (prev ? { ...prev, addresses } : prev));
   };
 
-  const value = useMemo(
-    () => ({ user, loading, login, register, logout, updateAddresses }),
+  const value = useMemo<AuthContextValue>(
+    () => ({ user, loading, login, loginAdmin, register, loginPartner, logout, refreshUser, updateAddresses }),
     [user, loading]
   );
 

@@ -1,15 +1,41 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MapPinIcon, PlusIcon, PencilIcon, Trash2Icon, StarIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import AddressForm, { type AddressFormValues } from "../components/AddressForm";
+import {
+  addAddress,
+  deleteAddress,
+  getAddresses,
+  updateAddress,
+} from "../services/addresses";
 import type { Address } from "../types";
 
 export default function Addresses() {
-  const { user, updateAddresses } = useAuth();
+  const { updateAddresses } = useAuth();
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<Address | null>(null);
-  const addresses = user?.addresses ?? [];
+  const [addresses, setAddresses] = useState<Address[]>([]);
+
+  // Keep both this page and the auth context (used at checkout) in sync.
+  const sync = (list: Address[]) => {
+    setAddresses(list);
+    updateAddresses(list);
+  };
+
+  const reload = async () => {
+    try {
+      sync(await getAddresses());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load addresses");
+    }
+  };
+
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openNew = () => {
     setEditing(null);
@@ -21,32 +47,40 @@ export default function Addresses() {
     setShowForm(true);
   };
 
-  const handleSubmit = (values: AddressFormValues) => {
-    let next: Address[];
-    if (editing) {
-      next = addresses.map((a) => (a._id === editing._id ? { ...editing, ...values } : a));
-    } else {
-      next = [...addresses, { ...values, _id: `addr_${Date.now()}` }];
+  const handleSubmit = async (values: AddressFormValues) => {
+    setSaving(true);
+    try {
+      if (editing) await updateAddress(editing._id, values);
+      else await addAddress(values);
+      await reload();
+      setShowForm(false);
+      setEditing(null);
+      toast.success(editing ? "Address updated" : "Address added");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save address");
+    } finally {
+      setSaving(false);
     }
-    // Enforce a single default.
-    if (values.isDefault) {
-      const targetId = editing?._id;
-      next = next.map((a) => ({ ...a, isDefault: editing ? a._id === targetId : a._id === next[next.length - 1]._id }));
-    }
-    updateAddresses(next);
-    setShowForm(false);
-    setEditing(null);
-    toast.success(editing ? "Address updated" : "Address added");
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this address?")) return;
-    updateAddresses(addresses.filter((a) => a._id !== id));
-    toast.success("Address removed");
+    try {
+      await deleteAddress(id);
+      await reload();
+      toast.success("Address removed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete address");
+    }
   };
 
-  const setDefault = (id: string) => {
-    updateAddresses(addresses.map((a) => ({ ...a, isDefault: a._id === id })));
+  const setDefault = async (id: string) => {
+    try {
+      await updateAddress(id, { isDefault: true });
+      await reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update address");
+    }
   };
 
   return (
@@ -115,6 +149,7 @@ export default function Addresses() {
                 initial={editing ?? undefined}
                 onSubmit={handleSubmit}
                 onCancel={() => setShowForm(false)}
+                submitting={saving}
               />
             </div>
           </div>

@@ -18,6 +18,7 @@ export default function Login() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
 
   const isRegister = mode === "register";
+  const ADMIN_EMAIL = "admin123@gmail.com";
 
   const validate = (): string | null => {
     if (isRegister && form.name.trim().length < 2) return "Please enter your full name.";
@@ -33,6 +34,10 @@ export default function Login() {
       toast.error(error);
       return;
     }
+    if (!isRegister && form.email.trim().toLowerCase() === ADMIN_EMAIL) {
+      toast.error("Admins must sign in from the Login as Admin page.");
+      return;
+    }
     setLoading(true);
     try {
       const user = isRegister
@@ -40,8 +45,8 @@ export default function Login() {
         : await login(form.email.trim(), form.password);
       toast.success(isRegister ? "Account created!" : `Welcome back, ${user.name}!`);
       navigate(redirect, { replace: true });
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -146,13 +151,15 @@ export default function Login() {
             </p>
           </form>
 
-          <p className="text-center text-xs text-app-text-light mt-6">
-            Tip: use <span className="font-mono">admin@…</span> or{" "}
-            <span className="font-mono">partner@…</span> to explore those roles.{" "}
-            <Link to="/" className="text-app-green hover:underline">
-              Back home
+          <div className="flex-center gap-4 text-sm text-app-text-light mt-6">
+            <Link to="/admin/login" className="font-semibold text-app-green hover:underline">
+              Login as Admin
             </Link>
-          </p>
+            <span className="text-app-border">|</span>
+            <Link to="/delivery/login" className="font-semibold text-app-green hover:underline">
+              Delivery Partner
+            </Link>
+          </div>
         </div>
       </div>
     </div>

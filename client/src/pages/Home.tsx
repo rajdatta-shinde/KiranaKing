@@ -9,7 +9,8 @@ import {
 } from "lucide-react";
 import CategoryGrid from "../components/CategoryGrid";
 import ProductCard from "../components/ProductCard";
-import { dummyProducts, dummyDeals, heroSectionData } from "../assets/assets";
+import { heroSectionData } from "../assets/assets";
+import { useProducts } from "../context/ProductsContext";
 
 const trustBadges = [
   { icon: TruckIcon, title: "Free Delivery", desc: "On orders over $35" },
@@ -19,10 +20,15 @@ const trustBadges = [
 ];
 
 export default function Home() {
-  const popular = dummyProducts.slice(0, 10);
+  const { products } = useProducts();
+  const popular = products.slice(0, 10);
+  const dummyDeals = [...products]
+    .filter((p) => p.discount > 0)
+    .sort((a, b) => b.discount - a.discount)
+    .slice(0, 8);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-12">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-12">
       {/* Hero */}
       <section className="relative overflow-hidden rounded-3xl bg-app-green">
         <img

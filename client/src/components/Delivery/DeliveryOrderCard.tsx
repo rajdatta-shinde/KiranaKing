@@ -1,6 +1,7 @@
 import { CheckCircleIcon, ClockIcon, MapPinIcon, PhoneIcon, TruckIcon, XCircleIcon } from 'lucide-react'
 import type { Order } from '../../types'
 import { statusColors } from '../../assets/assets';
+import { orderRef } from '../../utils/format';
 
 interface DeliveryOrderCardProps {
     order: Order;
@@ -21,7 +22,7 @@ export default function DeliveryOrderCard({ order, tab, handleUpdateStatus, setO
             {/* Header */}
             <div className="px-5 py-4 border-b border-app-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <span className="text-sm font-mono text-zinc-500">#{order._id.slice(-6).toUpperCase()}</span>
+                    <span className="text-sm font-mono text-zinc-500">{orderRef(order)}</span>
                     <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${statusColors[order.status] || "bg-zinc-100 text-zinc-600"}`}>
                         {order.status}
                     </span>

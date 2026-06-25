@@ -1,36 +1,7 @@
+import { api } from "./api";
 import type { CartItem, Order } from "../types";
-import { dummyMyOrders } from "../assets/assets";
 
-/**
- * Phase 1 order store. Orders the user places this session are kept in
- * localStorage and merged ahead of the seeded demo orders so My Orders and
- * the tracking page show a consistent list. In Phase 2 each function becomes
- * a call to the REST API while keeping these signatures.
- */
-const STORAGE_KEY = "kk_orders";
-
-function readLocal(): Order[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Order[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeLocal(orders: Order[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-}
-
-export function getOrders(): Order[] {
-  return [...readLocal(), ...dummyMyOrders];
-}
-
-export function getOrderById(id: string): Order | undefined {
-  return getOrders().find((o) => o._id === id);
-}
-
-interface PlaceOrderInput {
+export interface PlaceOrderInput {
   items: CartItem[];
   shippingAddress: Order["shippingAddress"];
   paymentMethod: string;
@@ -40,15 +11,23 @@ interface PlaceOrderInput {
   total: number;
 }
 
-function genOtp(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+/** Current user's orders, newest first. */
+export async function getOrders(): Promise<Order[]> {
+  const { orders } = await api.get<{ orders: Order[] }>("/orders/my");
+  return orders;
 }
 
-export function placeOrder(input: PlaceOrderInput): Order {
-  const now = new Date().toISOString();
-  const order: Order = {
-    _id: `ord_${Date.now()}`,
-    user: { _id: "usr_me", name: "You", email: "" },
+export async function getOrderById(id: string): Promise<Order | null> {
+  try {
+    const { order } = await api.get<{ order: Order }>(`/orders/${id}`);
+    return order;
+  } catch {
+    return null;
+  }
+}
+
+export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
+  const payload = {
     items: input.items.map((i) => ({
       product: i.product._id,
       name: i.product.name,
@@ -63,29 +42,20 @@ export function placeOrder(input: PlaceOrderInput): Order {
     deliveryFee: input.deliveryFee,
     tax: input.tax,
     total: input.total,
-    status: "Placed",
-    statusHistory: [{ status: "Placed", timestamp: now, note: "Order placed" }],
-    deliveryPartner: null,
-    deliveryOtp: genOtp(),
-    isPaid: input.paymentMethod === "card",
-    createdAt: now,
   };
-  writeLocal([order, ...readLocal()]);
+  const { order } = await api.post<{ order: Order }>("/orders", payload);
   return order;
 }
 
-export function cancelOrder(id: string): void {
-  const local = readLocal().map((o) =>
-    o._id === id
-      ? {
-          ...o,
-          status: "Cancelled",
-          statusHistory: [
-            ...o.statusHistory,
-            { status: "Cancelled", timestamp: new Date().toISOString(), note: "Cancelled by customer" },
-          ],
-        }
-      : o
+export async function cancelOrder(id: string): Promise<Order> {
+  const { order } = await api.patch<{ order: Order }>(`/orders/${id}/cancel`);
+  return order;
+}
+
+/** Customer polls the assigned partner's live GPS location. */
+export async function getLiveLocation(id: string): Promise<{ lat: number; lng: number } | null> {
+  const { liveLocation } = await api.get<{ liveLocation: { lat: number; lng: number } | null }>(
+    `/orders/${id}/location`
   );
-  writeLocal(local);
+  return liveLocation;
 }

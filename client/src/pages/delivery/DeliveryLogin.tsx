@@ -1,15 +1,29 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { BikeIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import { heroSectionData } from "../../assets/assets";
+import { useAuth } from "../../context/AuthContext";
 
 export default function DeliveryLogin() {
+    const navigate = useNavigate();
+    const { loginPartner } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const handleSubmit = async (e: React.SubmitEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-
+        setLoading(true);
+        try {
+            const partner = await loginPartner(email.trim(), password);
+            toast.success(`Welcome, ${partner.name}!`);
+            navigate("/delivery/dashboard", { replace: true });
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Login failed. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -29,7 +43,7 @@ export default function DeliveryLogin() {
                     <div className="text-center mb-8">
                         <div className="flex-center gap-2 mb-4">
                             <BikeIcon className="size-7 text-app-green" />
-                            <span className="text-2xl font-semibold text-app-green">Instacart</span>
+                            <span className="text-2xl font-semibold text-app-green">KiranaKing</span>
                         </div>
                         <h1 className="text-2xl font-semibold text-app-green mb-2">Delivery Partner Login</h1>
                         <p className="text-sm text-app-text-light">Sign in to manage your deliveries</p>
@@ -48,6 +62,12 @@ export default function DeliveryLogin() {
                             {loading ? "Signing in..." : "Sign In"}
                         </button>
                     </form>
+
+                    <p className="text-center text-sm text-app-text-light mt-6">
+                        <Link to="/login" className="font-semibold text-app-green hover:underline">
+                            Back to customer sign in
+                        </Link>
+                    </p>
                 </div>
             </div>
         </div>

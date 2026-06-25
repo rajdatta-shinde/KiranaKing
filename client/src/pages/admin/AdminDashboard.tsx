@@ -1,29 +1,34 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PackageIcon, UsersIcon, ShoppingBagIcon, AlertTriangleIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import Loading from "../../components/Loading";
-import { dummyAdminDashboardData, statusColors } from "../../assets/assets";
-
-interface Stats {
-    totalOrders: number;
-    totalUsers: number;
-    totalProducts: number;
-    outOfStock: number;
-    recentOrders: any[];
-}
+import { statusColors } from "../../assets/assets";
+import { orderRef } from "../../utils/format";
+import { getDashboard, type DashboardData } from "../../services/admin";
 
 export default function AdminDashboard() {
 
     const currency = import.meta.env.VITE_CURRENCY_SYMBOL || "$";
 
-    const [stats, setStats] = useState<Stats | null>(null);
+    const [stats, setStats] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        setTimeout(() => {
-            setStats(dummyAdminDashboardData);
-            setLoading(false);
-        }, 1000);
+        let cancelled = false;
+        getDashboard()
+            .then((data) => {
+                if (!cancelled) setStats(data);
+            })
+            .catch((err) => {
+                if (!cancelled) toast.error(err instanceof Error ? err.message : "Failed to load dashboard");
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const cards = stats
@@ -82,7 +87,7 @@ export default function AdminDashboard() {
                             ) : (
                                 stats?.recentOrders.map((order: any) => (
                                     <tr key={order._id} className="hover:bg-zinc-50/50 transition-colors">
-                                        <td className="px-6 py-4 font-mono text-xs text-zinc-500">#{order._id.slice(-6).toUpperCase()}</td>
+                                        <td className="px-6 py-4 font-mono text-xs text-zinc-500">{orderRef(order)}</td>
                                         <td className="px-6 py-4">
                                             <p className="font-medium text-zinc-900">{order.user?.name || "—"}</p>
                                             <p className="text-xs text-zinc-500">{order.user?.email || ""}</p>

@@ -2,7 +2,7 @@ import { ChevronRightIcon, CreditCardIcon } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 
 interface CheckoutPaymentProps {
-    setStep: Dispatch<SetStateAction<string>>;
+    setStep: (step: "address" | "payment" | "review") => void;
     paymentMethod: string;
     setPaymentMethod: Dispatch<SetStateAction<string>>;
 }

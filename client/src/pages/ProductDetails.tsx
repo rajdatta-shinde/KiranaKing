@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   StarIcon,
@@ -10,17 +10,41 @@ import {
   ShieldCheckIcon,
   ChevronRightIcon,
 } from "lucide-react";
-import { dummyProducts } from "../assets/assets";
 import { useCart } from "../context/CartContext";
 import { formatPrice } from "../utils/format";
+import { getProduct } from "../services/products";
+import { productImage } from "../utils/image";
+import type { Product } from "../types";
+import Loading from "../components/Loading";
 import ReviewSection from "../components/ReviewSection";
 import RelatedProducts from "../components/RelatedProducts";
 
 export default function ProductDetails() {
   const { id } = useParams();
-  const product = useMemo(() => dummyProducts.find((p) => p._id === id), [id]);
   const { addItem, getQuantity } = useCart();
   const [quantity, setQuantity] = useState(1);
+  const [product, setProduct] = useState<Product | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    setProduct(undefined);
+    if (!id) {
+      setProduct(null);
+      return;
+    }
+    getProduct(id)
+      .then((p) => {
+        if (!cancelled) setProduct({ ...p, image: productImage(p.image, p.name) });
+      })
+      .catch(() => {
+        if (!cancelled) setProduct(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (product === undefined) return <Loading label="Loading product..." />;
 
   if (!product) {
     return (

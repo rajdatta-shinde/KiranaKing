@@ -16,6 +16,21 @@ function genOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+/**
+ * Build a human-friendly, Amazon-style order number from the order's sequence
+ * number and creation date — e.g. `402-260625-000042`.
+ *   402     fixed store/marketplace code
+ *   260625  order date (YYMMDD, UTC)
+ *   000042  zero-padded monotonic sequence (guarantees uniqueness)
+ * Deterministic and sortable — no random digits.
+ */
+function formatOrderNumber(seq: number, createdAt: Date): string {
+  const yy = String(createdAt.getUTCFullYear()).slice(-2);
+  const mm = String(createdAt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(createdAt.getUTCDate()).padStart(2, "0");
+  return `402-${yy}${mm}${dd}-${String(seq).padStart(6, "0")}`;
+}
+
 /** POST /api/orders — create an order, decrement stock, kick off rider assignment. */
 export const createOrder = asyncHandler(async (req, res) => {
   const { items, shippingAddress, paymentMethod, subtotal, deliveryFee, tax, total } =
@@ -54,8 +69,16 @@ export const createOrder = asyncHandler(async (req, res) => {
       status: "Placed",
       statusHistory: appendStatus([], { status: "Placed", note: "Order placed" }),
       deliveryOtp: genOtp(),
-      isPaid: paymentMethod === "card",
+      // Orders start unpaid. Card orders are marked paid by the Stripe webhook
+      // (payment_intent.succeeded); COD orders are marked paid on delivery.
+      isPaid: false,
     },
+  });
+
+  // Now that the DB has assigned orderSeq, derive the display number from it.
+  const numbered = await prisma.order.update({
+    where: { id: order.id },
+    data: { orderNumber: formatOrderNumber(order.orderSeq, order.createdAt) },
   });
 
   // Decrement stock and flag any product that drops low.
@@ -71,7 +94,7 @@ export const createOrder = asyncHandler(async (req, res) => {
 
   await inngest.send({ name: EVENTS.ORDER_PLACED, data: { orderId: order.id } });
 
-  res.status(201).json({ order });
+  res.status(201).json({ order: numbered });
 });
 
 /** GET /api/orders/my — current user's orders. */
