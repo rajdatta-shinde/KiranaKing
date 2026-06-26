@@ -1,12 +1,22 @@
 import type { Request, Response, NextFunction } from "express";
-import { verifyToken } from "../utils/token";
+import { verifyToken, COOKIE_NAMES } from "../utils/token";
 import prisma from "../lib/prisma";
 
-/** Read the JWT from the httpOnly cookie or the Authorization header. */
+/**
+ * Read the user JWT from the Authorization header or, as a fallback, the
+ * httpOnly cookie.
+ *
+ * The Bearer header is preferred because the frontend deliberately does not
+ * restore sessions: it clears its localStorage token on every boot/refresh but
+ * cannot clear the httpOnly cookie. Reading the cookie first would let a stale
+ * cookie from a previous session shadow the fresh token sent right after login,
+ * which makes the first authenticated request (e.g. /orders/my) resolve to the
+ * wrong identity and come back empty.
+ */
 function extractToken(req: Request): string | null {
-  if (req.cookies?.token) return req.cookies.token;
   const header = req.headers.authorization;
   if (header?.startsWith("Bearer ")) return header.slice(7);
+  if (req.cookies?.[COOKIE_NAMES.user]) return req.cookies[COOKIE_NAMES.user];
   return null;
 }
 

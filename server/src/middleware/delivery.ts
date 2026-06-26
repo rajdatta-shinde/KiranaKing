@@ -1,11 +1,14 @@
 import type { Request, Response, NextFunction } from "express";
-import { verifyToken } from "../utils/token";
+import { verifyToken, COOKIE_NAMES } from "../utils/token";
 import prisma from "../lib/prisma";
 
+// Prefer the Bearer header over the cookie so a stale httpOnly cookie from a
+// previous session can't shadow the fresh token sent right after login. See the
+// matching note in middleware/auth.ts.
 function extractToken(req: Request): string | null {
-  if (req.cookies?.token) return req.cookies.token;
   const header = req.headers.authorization;
   if (header?.startsWith("Bearer ")) return header.slice(7);
+  if (req.cookies?.[COOKIE_NAMES.partner]) return req.cookies[COOKIE_NAMES.partner];
   return null;
 }
 

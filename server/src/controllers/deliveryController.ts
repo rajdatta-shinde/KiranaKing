@@ -27,14 +27,14 @@ export const loginPartner = asyncHandler(async (req, res) => {
   }
 
   const token = generateToken(partner.id, "partner");
-  setTokenCookie(res, token);
+  setTokenCookie(res, token, "partner");
   const { password: _pw, ...safe } = partner;
   res.json({ partner: safe, token });
 });
 
 /** POST /api/delivery/logout */
 export const logoutPartner = asyncHandler(async (_req, res) => {
-  clearTokenCookie(res);
+  clearTokenCookie(res, "partner");
   res.json({ message: "Logged out" });
 });
 
